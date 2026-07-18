@@ -15,6 +15,8 @@ class Player:
     def __init__(self):
         self.rect = pygame.Rect(screen_width // 2 - 20, screen_height // 2 - 20, 40, 40)
         self.speed = 5
+        self.lives = 3
+
     def move(self, keys):
         if keys[pygame.K_LEFT]:
             if self.rect.x < 0:
@@ -38,6 +40,8 @@ class Player:
                 self.rect.y += self.speed
     def draw(self):
         pygame.draw.rect(screen, (255, 0, 0), self.rect)
+        for l in range(self.lives):
+            pygame.draw.rect(screen, (255, 255, 0), (10 + l * 30,10,20,20))
 
 class Enemy:
     def __init__(self):
@@ -76,13 +80,20 @@ def main():
         for e in enemy:
             e.move_towards(player)
         
+        for e in enemy:
+            if player.rect.colliderect(e.rect):
+                player.lives -= 1
+                enemy.remove(e)
+
         player.draw()
         
         for e in enemy:
             e.draw()
-        
+        if player.lives <= 0:
+            pygame.time.delay(2000)
+            run = False
         pygame.display.update()
-
+    
     pygame.quit()
     exit()
 if __name__ == "__main__":
