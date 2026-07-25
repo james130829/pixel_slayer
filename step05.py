@@ -17,6 +17,10 @@ class Player:
         self.speed = 5
         self.lives = 3
 
+        self.attack_range = pygame.Rect(self.rect.x -30, self.rect.y -30, 100, 100)
+        self.attacking = False
+        self.attack_timer = 0
+
     def move(self, keys):
         if keys[pygame.K_LEFT]:
             if self.rect.x < 0:
@@ -38,8 +42,32 @@ class Player:
                 self.rect.y -= self.speed
             if self.rect.y <= screen_height -30:
                 self.rect.y += self.speed
+
+        self.attack_range.topleft = (self.rect.x - 30, self.rect.y - 30)
+
+    def attack(self, enemies):
+        if not self.attacking:
+            self.attacking = True
+            self.attack_timer = 12
+
+            new_enemies = []
+            for enemy in enemies:
+                if not self.attack_range.colliderect(enemy.rect):
+                    new_enemies.append(enemy)
+            enemies[:] = new_enemies
+
+    def update(self):
+        if self.attacking:
+            self.attack_timer -= 1
+            if self.attack_timer <= 0:
+                self.attacking = False
+
     def draw(self):
         pygame.draw.rect(screen, (255, 0, 0), self.rect)
+        if self.attacking:
+            pygame.draw.rect(screen, (255, 255, 255), self.attack_range, 2)
+        else:
+            pygame.draw.rect(screen, (0,0,0), self.attack_range, 1)
         for l in range(self.lives):
             pygame.draw.rect(screen, (255, 255, 0), (10 + l * 30,10,20,20))
 
@@ -77,6 +105,9 @@ def main():
         keys = pygame.key.get_pressed()
         player.move(keys)
 
+        if keys[pygame.K_SPACE]:
+            player.attack(enemy)
+
         for e in enemy:
             e.move_towards(player)
         
@@ -85,6 +116,7 @@ def main():
                 player.lives -= 1
                 enemy.remove(e)
 
+        player.update()
         player.draw()
         
         for e in enemy:
