@@ -3,8 +3,10 @@ import random
 
 pygame.init()
 
-screen_width = 500
-screen_height = 500
+game_font = pygame.font.Font(None, 120)
+WHITE = (255,255,255)
+screen_width = 600
+screen_height = 600
 
 screen = pygame.display.set_mode((screen_width,screen_height))
 
@@ -17,9 +19,10 @@ class Player:
         self.speed = 5
         self.lives = 3
 
-        self.attack_range = pygame.Rect(self.rect.x -30, self.rect.y -30, 100, 100)
+        self.attack_range = pygame.Rect(self.rect.x -40, self.rect.y -40, 120, 120)
         self.attacking = False
         self.attack_timer = 0
+        self.attack_cooldown = 0
 
     def move(self, keys):
         if keys[pygame.K_LEFT]:
@@ -43,12 +46,13 @@ class Player:
             if self.rect.y <= screen_height -30:
                 self.rect.y += self.speed
 
-        self.attack_range.topleft = (self.rect.x - 30, self.rect.y - 30)
+        self.attack_range.topleft = (self.rect.x - 40, self.rect.y - 40)
 
     def attack(self, enemies):
-        if not self.attacking:
+        if not self.attacking and self.attack_cooldown <= 0:
             self.attacking = True
             self.attack_timer = 12
+            self.attack_cooldown = 300
 
             new_enemies = []
             for enemy in enemies:
@@ -61,6 +65,8 @@ class Player:
             self.attack_timer -= 1
             if self.attack_timer <= 0:
                 self.attacking = False
+        if self.attack_cooldown > 0:
+            self.attack_cooldown -= 1
 
     def draw(self):
         pygame.draw.rect(screen, (255, 0, 0), self.rect)
@@ -70,6 +76,9 @@ class Player:
             pygame.draw.rect(screen, (0,0,0), self.attack_range, 1)
         for l in range(self.lives):
             pygame.draw.rect(screen, (255, 255, 0), (10 + l * 30,10,20,20))
+        cell_text = game_font.render(str(self.attack_cooldown), True, WHITE)
+        text_rect = (screen_width-100,screen_height-100)
+        screen.blit(cell_text, text_rect)
 
 class Enemy:
     def __init__(self):
