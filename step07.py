@@ -13,6 +13,13 @@ screen = pygame.display.set_mode((screen_width,screen_height))
 clock = pygame.time.Clock()
 FPS = 60
 
+HEAL_DROP_CHANCE = 0.25
+MAX_HEAL = 3
+MAX_LIVES = 5
+
+HASTE_DROP_CHANCE = 0.25
+MAX_HASTE = 1
+
 class Player:
     def __init__(self):
         self.rect = pygame.Rect(screen_width // 2 - 20, screen_height // 2 - 20, 40, 40)
@@ -55,10 +62,15 @@ class Player:
             self.attack_cooldown = 300
 
             new_enemies = []
+            killed = []
             for enemy in enemies:
-                if not self.attack_range.colliderect(enemy.rect):
+                if self.attack_range.colliderect(enemy.rect):
+                    killed.append(enemy)
+                else:
                     new_enemies.append(enemy)
             enemies[:] = new_enemies
+            return killed
+        return []
 
     def update(self):
         if self.attacking:
@@ -98,10 +110,40 @@ class Enemy:
     def draw(self):
         pygame.draw.rect(screen, (0,255,0), self.rect)
 
+class heal:
+    def __init__(self, x, y):
+        self.rect = pygame.Rect(x, y, 30, 30)
+        self.duration = 10 * FPS
+
+    def update(self):
+        self.duration -= 1
+
+    def expired(self):
+        return self.duration <= 0
+
+    def draw(self):
+        pygame.draw.rect(screen, (255,105,180), self.rect)
+
+class Haste:
+    def __init__ (self, x, y):
+        self.rect = pygame.Rect(x, y, 30, 30)
+        self.duration = 10 * FPS
+
+    def update(self):
+        self.duration -= 1
+
+    def expired(self):
+        return self.duration <= 0
+
+    def draw(self):
+        pygame.draw.rect(screen, (105,255,180), self.rect)
+
 def main():
     run = True
     player = Player()
     enemy = [Enemy() for _ in range(3)]
+    heals = []
+    hastes = []
 
     enemy_spawn_timer = 0
     enemy_spawn_interval = 120
@@ -116,8 +158,13 @@ def main():
         keys = pygame.key.get_pressed()
         player.move(keys)
 
+
+        # [MODIFIED]
         if keys[pygame.K_SPACE]:
-            player.attack(enemy)
+            killed = player.attack(enemy)
+            for e in killed:
+                if len(heals) < MAX_HEAL and random.random() < HEAL_DROP_CHANCE:
+                    heals.append(heal(e.rect.x, e.rect.y))
 
         enemy_spawn_timer += 1
         if enemy_spawn_timer>= enemy_spawn_interval:
@@ -132,11 +179,27 @@ def main():
                 player.lives -= 1
                 enemy.remove(e)
 
+        for h in heals:
+            h.update()
+            if h.expired():
+                heals.remove(h)
+                continue
+            if player.rect.colliderect(h.rect) and player.lives < MAX_LIVES:
+                player.lives += 1
+                heals.remove(h)
+
+        
+        # [MODIFIED]
+
         player.update()
         player.draw()
         
         for e in enemy:
             e.draw()
+        for h in heals:
+            h.draw()
+        for hs in hastes:
+            hs.draw()
         if player.lives <= 0:
             pygame.time.delay(2000)
             run = False
