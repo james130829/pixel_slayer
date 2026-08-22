@@ -13,12 +13,25 @@ screen = pygame.display.set_mode((screen_width,screen_height))
 clock = pygame.time.Clock()
 FPS = 60
 
-HEAL_DROP_CHANCE = 0.25
+HEAL_DROP_CHANCE = 0.3
 MAX_HEAL = 3
 MAX_LIVES = 5
 
-HASTE_DROP_CHANCE = 0.25
+HASTE_DROP_CHANCE = 0.3
 MAX_HASTE = 1
+HASTE_DURATION = 10 * FPS
+
+SHIELD_DROP_CHANCE = 0.3
+MAX_SHIELD = 1
+SHIELD_DURATION = 5 * FPS
+
+# 여기 작업 중 !! (스코어 우상단에 그리기)
+cell_text = game_font.render(str(self.attack_cooldown), True, WHITE)
+text_rect = (screen_width-100,screen_height-100)
+screen.blit(cell_text, text_rect)
+
+def draw_score(score):
+    (30,350)
 
 class Player:
     def __init__(self):
@@ -30,6 +43,10 @@ class Player:
         self.attacking = False
         self.attack_timer = 0
         self.attack_cooldown = 0
+        self.attack_cooldown_base = 3 * FPS
+        self.attack_cooldown_max = self.attack_cooldown_base
+        self.haste_timer = 0
+        self.shield_timer = 0
 
     def move(self, keys):
         if keys[pygame.K_LEFT]:
@@ -59,7 +76,7 @@ class Player:
         if not self.attacking and self.attack_cooldown <= 0:
             self.attacking = True
             self.attack_timer = 12
-            self.attack_cooldown = 300
+            self.attack_cooldown = self.attack_cooldown_max
 
             new_enemies = []
             killed = []
@@ -72,6 +89,13 @@ class Player:
             return killed
         return []
 
+    def haste(self):
+        self.attack_cooldown_max *= (1/2)
+        self.haste_timer += 10 * FPS
+
+    def shield(self):
+        self.shield_timer += SHIELD_DURATION
+
     def update(self):
         if self.attacking:
             self.attack_timer -= 1
@@ -79,6 +103,12 @@ class Player:
                 self.attacking = False
         if self.attack_cooldown > 0:
             self.attack_cooldown -= 1
+        if self.haste_timer > 0:
+            self.haste_timer -= 1
+            if self.haste_timer == 0:
+                self.attack_cooldown_max = self.attack_cooldown_base
+        if self.shield_timer > 0:
+            self.shield_timer -= 1
 
     def draw(self):
         pygame.draw.rect(screen, (255, 0, 0), self.rect)
@@ -91,6 +121,7 @@ class Player:
         cell_text = game_font.render(str(self.attack_cooldown), True, WHITE)
         text_rect = (screen_width-100,screen_height-100)
         screen.blit(cell_text, text_rect)
+
 
 class Enemy:
     def __init__(self):
@@ -110,7 +141,7 @@ class Enemy:
     def draw(self):
         pygame.draw.rect(screen, (0,255,0), self.rect)
 
-class heal:
+class Heal:
     def __init__(self, x, y):
         self.rect = pygame.Rect(x, y, 30, 30)
         self.duration = 10 * FPS
@@ -138,33 +169,55 @@ class Haste:
     def draw(self):
         pygame.draw.rect(screen, (105,255,180), self.rect)
 
+class Shield:
+    def __init__ (self, x, y):
+        self.rect = pygame.Rect(x, y, 30, 30)
+        self.duration = 10 * FPS
+
+    def update(self):
+        self.duration -= 1
+
+    def expired(self):
+        return self.duration <= 0
+
+    def draw(self):
+        pygame.draw.rect(screen, (255,255,25), self.rect)
+
 def main():
     run = True
     player = Player()
     enemy = [Enemy() for _ in range(3)]
     heals = []
     hastes = []
+    shields = []
+    score = 0
 
     enemy_spawn_timer = 0
     enemy_spawn_interval = 120
     while run:
         clock.tick(FPS)
         screen.fill((0,0,0))
-
+        score += 1/FPS
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
 
         keys = pygame.key.get_pressed()
         player.move(keys)
-
-
-        # [MODIFIED]
+        
         if keys[pygame.K_SPACE]:
             killed = player.attack(enemy)
+            score += len(killed) * 10
             for e in killed:
-                if len(heals) < MAX_HEAL and random.random() < HEAL_DROP_CHANCE:
-                    heals.append(heal(e.rect.x, e.rect.y))
+                ran = random.random()
+                if len(heals) < MAX_HEAL and ran <= HEAL_DROP_CHANCE:
+                    heals.append(Heal(e.rect.x, e.rect.y))
+                tmp = HEAL_DROP_CHANCE
+                if len(hastes) < MAX_HASTE and tmp < ran <= tmp + HASTE_DROP_CHANCE:
+                    hastes.append(Haste(e.rect.x, e.rect.y))
+                tmp += HASTE_DROP_CHANCE
+                if len(shields) < MAX_SHIELD and tmp < ran <= tmp + SHIELD_DROP_CHANCE:
+                    shields.append(Shield(e.rect.x, e.rect.y))
 
         enemy_spawn_timer += 1
         if enemy_spawn_timer>= enemy_spawn_interval:
@@ -175,7 +228,7 @@ def main():
             e.move_towards(player)
         
         for e in enemy:
-            if player.rect.colliderect(e.rect):
+            if player.rect.colliderect(e.rect) and player.shield_timer == 0:
                 player.lives -= 1
                 enemy.remove(e)
 
@@ -188,8 +241,22 @@ def main():
                 player.lives += 1
                 heals.remove(h)
 
-        
-        # [MODIFIED]
+        for hs in hastes:
+            hs.update()
+            if hs.expired():
+                hastes.remove(hs)
+                continue
+            if player.rect.colliderect(hs.rect) and player.haste_timer == 0:
+                player.haste()
+                hastes.remove(hs)
+        for s in shields:
+            s.update()
+            if s.expired():
+                shields.remove(s)
+                continue
+            if player.rect.colliderect(s.rect) and player.shield_timer == 0:
+                player.shield()
+                shields.remove(s)
 
         player.update()
         player.draw()
@@ -200,6 +267,8 @@ def main():
             h.draw()
         for hs in hastes:
             hs.draw()
+        for s in shields:
+            s.draw()
         if player.lives <= 0:
             pygame.time.delay(2000)
             run = False
