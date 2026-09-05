@@ -31,6 +31,25 @@ def draw_score(score):
     text_rect = (screen_width-200,30)
     screen.blit(cell_text, text_rect)
 
+
+player = pygame.image.load("assets/player.png").convert_alpha()
+player = pygame.transform.scale(player, (40, 40))
+
+enemy = pygame.image.load("assets/enemy.png").convert_alpha()
+enemy = pygame.transform.scale(enemy, (40, 40))
+
+heal = pygame.image.load("assets/heal.png").convert_alpha()
+heal = pygame.transform.scale(heal, (30, 30))
+
+haste = pygame.image.load("assets/haste.png").convert_alpha()
+haste = pygame.transform.scale(haste, (30, 30))
+
+shield = pygame.image.load("assets/shield.png").convert_alpha()
+shield = pygame.transform.scale(shield, (30, 30))
+
+life = pygame.image.load("assets/life.png").convert_alpha()
+life = pygame.transform.scale(life, (30, 30))
+
 class Player:
     def __init__(self):
         self.rect = pygame.Rect(screen_width // 2 - 20, screen_height // 2 - 20, 40, 40)
@@ -44,7 +63,7 @@ class Player:
         self.attack_cooldown_base = 3 * FPS
         self.attack_cooldown_max = self.attack_cooldown_base
         self.haste_timer = 0
-        self.shield_timer = 0
+        self.shield_timer = 0        
 
     def move(self, keys):
         if keys[pygame.K_LEFT]:
@@ -109,17 +128,18 @@ class Player:
             self.shield_timer -= 1
 
     def draw(self):
-        pygame.draw.rect(screen, (255, 0, 0), self.rect)
+        screen.blit(player, self.rect)
         if self.attacking:
             pygame.draw.rect(screen, (255, 255, 255), self.attack_range, 2)
         else:
             pygame.draw.rect(screen, (0,0,0), self.attack_range, 1)
         for l in range(self.lives):
             pygame.draw.rect(screen, (255, 255, 0), (10 + l * 30,10,20,20))
+            life_rect = life.get_rect(topleft =(10 + l * 30, 10))
+            screen.blit(life, life_rect)
         cell_text = game_font.render(str(self.attack_cooldown), True, WHITE)
         text_rect = (screen_width-100,screen_height-100)
         screen.blit(cell_text, text_rect)
-
 
 class Enemy:
     def __init__(self):
@@ -137,7 +157,7 @@ class Enemy:
             self.rect.y -= self.speed
 
     def draw(self):
-        pygame.draw.rect(screen, (0,255,0), self.rect)
+        screen.blit(enemy, self.rect)
 
 class Heal:
     def __init__(self, x, y):
@@ -151,7 +171,7 @@ class Heal:
         return self.duration <= 0
 
     def draw(self):
-        pygame.draw.rect(screen, (255,105,180), self.rect)
+        screen.blit(heal, self.rect)
 
 class Haste:
     def __init__ (self, x, y):
@@ -165,7 +185,7 @@ class Haste:
         return self.duration <= 0
 
     def draw(self):
-        pygame.draw.rect(screen, (105,255,180), self.rect)
+        screen.blit(haste, self.rect)
 
 class Shield:
     def __init__ (self, x, y):
@@ -179,7 +199,7 @@ class Shield:
         return self.duration <= 0
 
     def draw(self):
-        pygame.draw.rect(screen, (255,255,25), self.rect)
+        screen.blit(shield, self.rect)
 
 def main():
     run = True
